@@ -12,8 +12,6 @@ const pool = new Pool({
 app.get('/', async (req, res) => {
   try {
     await pool.query('SELECT NOW()');
-    res.send('✅ Server is LIVE and Database is CONNECTED!');
-  } catch (err) {
     res.status(500).send('❌ Database Connection Error');
   }
 });
