@@ -4,33 +4,50 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 3000;
 
+// 1. Database Connection
 const pool = new Pool({
   connectionString: 'postgres://frankfurt:P6ROik1jn232QPYNfiN9P8iwrekgroq5@dpg-d50osmhr0fns73904lf0-a/digitalearn',
   ssl: { rejectUnauthorized: false } 
 });
 
+// 2. Middleware
 app.use(express.json());
+// This tells the server to serve files from the main (root) folder
+app.use(express.static(__dirname)); 
 
-// This tells the server to allow access to ALL these folders just in case
-app.use(express.static(path.join(__dirname)));
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static(path.join(__dirname, 'public', 'public')));
-
-// THE FORCE ROUTE: If someone goes to your link, search every folder for index.html
+// 3. The Home Route
+// This sends your index.html to the browser when you visit the link
 app.get('/', (req, res) => {
-  const possiblePaths = [
-    path.join(__dirname, 'index.html'),
-    path.join(__dirname, 'public', 'index.html'),
-    path.join(__dirname, 'public', 'public', 'index.html')
-  ];
-
-  // Try to find the file in any of those locations
-  for (let p of possiblePaths) {
-    if (require('fs').existsSync(p)) {
-      return res.sendFile(p);
-    }
-  }
-  res.status(404).send("File still not found. Check GitHub file names!");
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(port, () => console.log(`Server running on ${port}`));
+// 4. The Earning Logic
+app.post('/earn', async (req, res) => {
+  const { email, amount } = req.body;
+  try {
+    // This updates the balance in your PostgreSQL database
+    const updated = await pool.query(
+      'UPDATE users SET balance = balance + $1 WHERE email = $2 RETURNING *',
+      [amount, email]
+    );
+
+    if (updated.rows.length === 0) {
+      // If user doesn't exist yet, create them
+      const newUser = await pool.query(
+        'INSERT INTO users (email, balance) VALUES ($1, $2) RETURNING *',
+        [email, amount]
+      );
+      return res.json(newUser.rows[0]);
+    }
+
+    res.json(updated.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+// 5. Start the Server
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
