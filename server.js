@@ -11,28 +11,26 @@ const pool = new Pool({
 
 app.use(express.json());
 
-// FIXED LINE: This tells the server to look deeper into your double folder
+// This tells the server to allow access to ALL these folders just in case
+app.use(express.static(path.join(__dirname)));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'public', 'public')));
 
-app.post('/register', async (req, res) => {
-  const { email } = req.body;
-  try {
-    const newUser = await pool.query('INSERT INTO users (email, balance) VALUES ($1, $2) RETURNING *', [email, 0.00]);
-    res.json(newUser.rows[0]);
-  } catch (err) { res.status(400).send("Error"); }
-});
-
-app.post('/earn', async (req, res) => {
-  const { email, amount } = req.body;
-  try {
-    const updated = await pool.query('UPDATE users SET balance = balance + $1 WHERE email = $2 RETURNING *', [amount, email]);
-    res.json(updated.rows[0]);
-  } catch (err) { res.status(500).send("Error"); }
-});
-
-// FIXED LINE: Points exactly to public/public/index.html
+// THE FORCE ROUTE: If someone goes to your link, search every folder for index.html
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'public', 'index.html'));
+  const possiblePaths = [
+    path.join(__dirname, 'index.html'),
+    path.join(__dirname, 'public', 'index.html'),
+    path.join(__dirname, 'public', 'public', 'index.html')
+  ];
+
+  // Try to find the file in any of those locations
+  for (let p of possiblePaths) {
+    if (require('fs').existsSync(p)) {
+      return res.sendFile(p);
+    }
+  }
+  res.status(404).send("File still not found. Check GitHub file names!");
 });
 
 app.listen(port, () => console.log(`Server running on ${port}`));
