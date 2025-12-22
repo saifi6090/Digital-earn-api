@@ -4,17 +4,16 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// 1. Connection to your Database
 const pool = new Pool({
   connectionString: 'postgres://frankfurt:P6ROik1jn232QPYNfiN9P8iwrekgroq5@dpg-d50osmhr0fns73904lf0-a/digitalearn',
   ssl: { rejectUnauthorized: false } 
 });
 
-// 2. Settings
 app.use(express.json());
-app.use(express.static('public')); // This looks for your index.html
 
-// 3. The "Register" Route
+// FIXED LINE: This tells the server to look deeper into your double folder
+app.use(express.static(path.join(__dirname, 'public', 'public')));
+
 app.post('/register', async (req, res) => {
   const { email } = req.body;
   try {
@@ -23,7 +22,6 @@ app.post('/register', async (req, res) => {
   } catch (err) { res.status(400).send("Error"); }
 });
 
-// 4. The "Earn" Route
 app.post('/earn', async (req, res) => {
   const { email, amount } = req.body;
   try {
@@ -32,9 +30,9 @@ app.post('/earn', async (req, res) => {
   } catch (err) { res.status(500).send("Error"); }
 });
 
-// 5. The "Dashboard" Route (Forces the HTML to show)
+// FIXED LINE: Points exactly to public/public/index.html
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'public', 'index.html'));
 });
 
 app.listen(port, () => console.log(`Server running on ${port}`));
