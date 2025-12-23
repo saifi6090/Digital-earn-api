@@ -4,50 +4,39 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// 1. Database Connection
+// Database Connection
 const pool = new Pool({
   connectionString: 'postgres://frankfurt:P6ROik1jn232QPYNfiN9P8iwrekgroq5@dpg-d50osmhr0fns73904lf0-a/digitalearn',
   ssl: { rejectUnauthorized: false } 
 });
 
-// 2. Middleware
 app.use(express.json());
-// This tells the server to serve files from the main (root) folder
 app.use(express.static(__dirname)); 
 
-// 3. The Home Route
-// This sends your index.html to the browser when you visit the link
+// 1. THE MAIN DASHBOARD ROUTE
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// 4. The Earning Logic
+// 2. THE EARNING ROUTE
 app.post('/earn', async (req, res) => {
   const { email, amount } = req.body;
   try {
-    // This updates the balance in your PostgreSQL database
     const updated = await pool.query(
       'UPDATE users SET balance = balance + $1 WHERE email = $2 RETURNING *',
       [amount, email]
     );
-
-    if (updated.rows.length === 0) {
-      // If user doesn't exist yet, create them
-      const newUser = await pool.query(
-        'INSERT INTO users (email, balance) VALUES ($1, $2) RETURNING *',
-        [email, amount]
-      );
-      return res.json(newUser.rows[0]);
-    }
-
-    res.json(updated.rows[0]);
+    res.json(updated.rows[0] || { balance: amount });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Database error" });
+    res.status(500).json({ error: "Database Error" });
   }
 });
 
-// 5. Start the Server
+// 3. SAFETY ROUTE (To test if the server is awake)
+app.get('/test', (req, res) => {
+  res.send("Server is running perfectly!");
+});
+
 app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+  console.log(`Server is live on port ${port}`);
 });
